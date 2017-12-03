@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebGL Paint</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	  <script src="js/sylvester.js" type="text/javascript"></script>
+    <script src="js/glUtils.js" type="text/javascript"></script>
+    <script src="js/objObject.js" type="text/javascript"></script>
+    <script src="js/shader.js" type="text/javascript"></script>
+    <script src="js/datgui.min.js" type="text/javascript"></script>
+    <script src="js/menu.js" type="text/javascript"></script>
+    <script src="js/objloader.js" type="text/javascript"></script>
+    <script src="webgl.js" type="text/javascript"></script>
+
+    <!-- Fragment shader program -->
+
+    <script id="shader-fs" type="x-shader/x-fragment">
+       uniform int light;
+       uniform sampler2D tex;
+       uniform int texture;
+
+       varying highp vec3 normal;
+       varying highp vec3 eye;
+       varying highp vec2 texCoord;
+       varying highp vec3 LightVector;
+       
+
+        void main(void) {
+            highp vec3 color;
+            if(light == 1){
+              highp vec3 ambientLight = vec3(0.15, 0.15, 0.15);
+              highp vec3 diffuseColor = vec3(0.7, 0.7, 0.7);
+              highp vec3 specularColor = vec3(0.7, 0.7, 0.7);
+
+              highp vec3 N = normalize(normal);
+  		        highp vec3 l = normalize(LightVector);
+
+              highp float NdotL = max(dot(N, l), 0.0);
+
+              //Setting ambient color
+              color = ambientLight;
+
+              if(NdotL > 0.0){
+
+                  //adding diffuse color
+                  color +=  NdotL * diffuseColor;
+
+                  highp vec3 halfVector = normalize(l + eye);
+                  highp float spec = pow(dot(halfVector, N), 300.0);
+
+                  //Using Phong Color
+                  color += NdotL * spec * specularColor;
+              }
+
+              
+              color = clamp(color, 0.0, 1.0);
+            }else{
+              color = vec3(1.0,1.0,1.0);
+            }
+
+            highp vec4 texcolor;
+            if(texture == 1)  texcolor = vec4(texture2D(tex, texCoord).xyz, 1.0);     
+            else              texcolor = vec4(1.0,1.0,1.0,1.0); 
+
+  		      gl_FragColor  = vec4(color, 1.0) * texcolor;   
+        }
+    </script>
+    
+    <!-- Vertex shader program -->
+    
+    <script id="shader-vs" type="x-shader/x-vertex">
+      attribute vec3 aVertexPos;
+      attribute vec3 aNormalPosition;
+      attribute vec2 aTexturePosition;
+
+      uniform mat4 uModelMatrix;
+      uniform mat4 uViewMatrix;
+      uniform mat4 uPMatrix;
+
+      varying vec3 normal;
+      varying vec3 eye;
+      varying vec2 texCoord;
+      varying vec3 LightVector;
+    
+      void main(void) {
+        //Passing texture coordinates
+        texCoord = aTexturePosition;
+
+        vec4 pos =  uViewMatrix * uModelMatrix *  vec4(aVertexPos.xyz, 1.0);
+
+        //Light direction
+        vec3 LightPosition  = vec3(-1.0, 1.0, -1.0);
+        LightVector = normalize(LightPosition - pos.xyz);
+
+        //Normal vector
+        normal = mat3(uViewMatrix * uModelMatrix) * aNormalPosition;
+        //Vector from world position to eye
+        eye = (vec4(0.0,0.0,0.0,1.0)-pos).xyz;
+
+        gl_Position = uPMatrix * pos;
+      }
+    </script>
+
+  </head>
+  
+  <body onload="start()" id="body">
+    <div id = "div">
+    <canvas id="glcanvas" width="640" height="480" oncontextmenu="return false;">
+      Your browser doesn't appear to support the HTML5 <code>&lt;canvas&gt;</code> element.
+    </canvas>
+  </div>
+  <div style="visibility:hidden"><input id="openOBJ" type="file" accept=".obj" onchange="openFile(event)" ></div>
+  <div style="visibility:hidden"><input id="openTexture" type="file" accept="image/*" onchange="openTexture(event)" ></div>
+
+  </body>
+</html>
